@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GossipGirl: Python & Excel Edition</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gossip: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                            accent: '#2563eb',
+                            purple: '#3b82f6',
+                            lightbg: '#f8fafc',
+                            lightcard: '#ffffff'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['Fira Code', 'Courier New', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Tone.js for Sound Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(14, 165, 233, 0.3);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(14, 165, 233, 0.6);
+        }
+        
+        @keyframes messagePop {
+            0% { opacity: 0; transform: translateY(12px) scale(0.97); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-message {
+            animation: messagePop 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .chat-bg-pattern {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#0ea5e9 0.6px, transparent 0.6px), radial-gradient(#2563eb 0.6px, #f8fafc 0.6px);
+            background-size: 24px 24px;
+            background-position: 0 0, 12px 12px;
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 text-slate-800 font-sans antialiased flex flex-col transition-colors duration-300">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white/90 border-b border-sky-100 backdrop-blur-md px-4 py-3 flex items-center justify-between sticky top-0 z-30 shrink-0 shadow-sm">
+        <div class="flex items-center space-x-3">
+            <div class="relative">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-sky-500 via-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-md shadow-sky-500/20">
+                    💅
+                </div>
+                <span class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-bold text-lg text-slate-800">
+                        GossipGirl <span class="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 font-semibold border border-sky-200">Python & Excel</span>
+                    </h1>
+                </div>
+                <p class="text-xs text-slate-500 flex items-center gap-1">
+                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
+                    <span id="subtitle-text">Chatting with <strong class="text-sky-600">Lily 💋</strong> (Spilling Tea & Code)</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Right Header Stats, Lang Toggle & Settings -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+            <!-- Language Switcher Toggle -->
+            <button id="lang-btn" onclick="toggleLanguage()" class="px-2.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 transition-colors text-xs font-bold flex items-center gap-1.5">
+                <i data-lucide="globe" class="w-3.5 h-3.5 text-sky-600"></i>
+                <span id="lang-label">EN / 中文</span>
+            </button>
+
+            <!-- Progress / Tea Score -->
+            <div class="hidden sm:flex items-center bg-slate-100/80 border border-slate-200 rounded-full px-3 py-1.5 space-x-2">
+                <i data-lucide="sparkles" class="w-4 h-4 text-sky-500"></i>
+                <span id="level-label" class="text-xs font-semibold text-slate-600">Level:</span>
+                <span id="level-indicator" class="text-xs font-bold text-sky-600">1 / 5</span>
+                <div class="w-16 bg-slate-200 h-2 rounded-full overflow-hidden">
+                    <div id="progress-bar-fill" class="bg-gradient-to-r from-sky-500 to-blue-600 h-full w-[20%] transition-all duration-500"></div>
+                </div>
+            </div>
+
+            <!-- Sound Toggle -->
+            <button id="sound-btn" onclick="toggleSound()" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" title="Toggle Sound">
+                <i data-lucide="volume-2" id="sound-icon" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Sidebar Toggle (Vocabulary & Hints) -->
+            <button onclick="toggleSidebar()" class="p-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 border border-sky-200 transition-colors flex items-center gap-1.5 text-xs font-semibold">
+                <i data-lucide="book-open" class="w-4 h-4"></i>
+                <span class="hidden md:inline" id="cheatsheet-btn-label">Gossip Cheat Sheet</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container Layout -->
+    <div class="flex-1 flex overflow-hidden relative chat-bg-pattern">
+
+        <!-- Main Chat & Workspace Area -->
+        <main class="flex-1 flex flex-col h-full max-w-4xl mx-auto w-full relative">
+
+            <!-- Chat Scroll Area -->
+            <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+                
+                <!-- Welcome Banner -->
+                <div class="text-center my-4 animate-message">
+                    <div class="inline-block bg-white/90 backdrop-blur-md border border-sky-100 rounded-2xl p-4 max-w-md shadow-md text-left">
+                        <div class="flex items-center gap-2 mb-2 text-sky-600 font-bold text-sm">
+                            <i data-lucide="flame" class="w-4 h-4 text-sky-500"></i>
+                            <span id="banner-title">Welcome to Office Drama Hub! / 歡迎來到辦公室八卦中心！</span>
+                        </div>
+                        <p id="banner-desc" class="text-xs text-slate-600 leading-relaxed mb-3">
+                            You & Lily work at NYC's top firm. Big drama is breaking out regarding brunch bills, leaked pitch decks, and secret bonuses!
+                            <br><span class="text-slate-400 font-normal">你和 Lily 在紐約頂尖公司上班，辦公室爆發了大八卦！</span>
+                        </p>
+                        <p id="banner-hint" class="text-xs text-sky-800 font-mono bg-sky-50 p-2.5 rounded-xl border border-sky-200">
+                            💡 Use <strong>Python & Pandas in Excel</strong> (`=PY()`) to solve office mysteries! / 使用 Excel 中的 Python 分析數據、破解真相！
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Chat messages injected dynamically -->
+                <div id="chat-messages" class="space-y-4"></div>
+
+                <!-- Typing indicator -->
+                <div id="typing-indicator" class="hidden flex items-center space-x-2 bg-white rounded-2xl px-4 py-2.5 w-max border border-slate-200 shadow-sm">
+                    <div class="w-2 h-2 rounded-full bg-sky-400 animate-bounce"></div>
+                    <div class="w-2 h-2 rounded-full bg-blue-500 animate-bounce [animation-delay:0.2s]"></div>
+                    <div class="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.4s]"></div>
+                    <span id="typing-text" class="text-xs text-slate-500 ml-1">Lily is typing tea... / Lily 正在輸入...</span>
+                </div>
+            </div>
+
+            <!-- Interactive Reply / Code Input Sticky Footer -->
+            <div class="p-3 sm:p-4 bg-white/95 border-t border-slate-200/80 backdrop-blur-lg sticky bottom-0 z-20 shadow-lg">
+                <div id="input-controls-container" class="max-w-3xl mx-auto">
+                    <!-- Dynamic choices or code inputs will load here -->
+                    <div id="default-chat-input" class="flex items-center gap-2">
+                        <input type="text" id="user-text-input" placeholder="Type a message..." disabled
+                            class="flex-1 bg-slate-50 border border-slate-300 text-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-sky-500 disabled:opacity-50">
+                        <button id="send-btn" disabled class="bg-sky-600 hover:bg-sky-500 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all disabled:opacity-50 flex items-center gap-1 shadow-sm">
+                            <span>Send</span>
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Vocabulary Sidebar (Gossip Cheat Sheet) -->
+        <aside id="vocab-sidebar" class="w-80 bg-white border-l border-slate-200 flex flex-col h-full absolute right-0 top-0 z-40 transform translate-x-full transition-transform duration-300 ease-in-out md:relative md:translate-x-0 shadow-xl">
+            <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="book-open" class="w-5 h-5 text-sky-600"></i>
+                    <h2 id="sidebar-title" class="font-bold text-sm text-slate-800">Cheat Sheet / 知識速查表</h2>
+                </div>
+                <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+                
+                <!-- Section 0: Core Python Basics -->
+                <div>
+                    <h3 class="text-emerald-700 font-bold uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1">
+                        <i data-lucide="code-2" class="w-3.5 h-3.5"></i> Python Basics / 基礎語法
+                    </h3>
+                    <div class="space-y-2">
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-emerald-700 font-bold font-mono">x = 10 | s = "text" | b = True</code>
+                            <p class="text-slate-600 mt-1">Data Types: int, float, string, bool / 資料型態。</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-emerald-700 font-bold font-mono">lst = [1, 2, 3] | d = {"a": 1}</code>
+                            <p class="text-slate-600 mt-1">List & Dictionary structures / 串列與字典。</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-emerald-700 font-bold font-mono">if x > 5: ... else: ...</code>
+                            <p class="text-slate-600 mt-1">Conditionals / 條件判斷式。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 1: Python in Excel Basics -->
+                <div>
+                    <h3 class="text-sky-700 font-bold uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1">
+                        <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> Excel =PY() Basics
+                    </h3>
+                    <div class="space-y-2">
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-sky-700 font-bold font-mono">=PY( "code" )</code>
+                            <p class="text-slate-600 mt-1">Enables Python directly inside Excel cell / 在儲存格中啟用 Python。</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-blue-700 font-bold font-mono">xl("A1:D10", headers=True)</code>
+                            <p class="text-slate-600 mt-1">Converts Excel range to Pandas DataFrame / 轉換 Excel 範圍為 DataFrame。</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-sky-700 font-bold font-mono">Ctrl + Enter</code>
+                            <p class="text-slate-600 mt-1">Commit formula & recalculate / 執行 Python 公式。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Essential Pandas Commands -->
+                <div>
+                    <h3 class="text-blue-700 font-bold uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1">
+                        <i data-lucide="database" class="w-3.5 h-3.5"></i> Pandas Commands
+                    </h3>
+                    <div class="space-y-2">
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-sky-700 font-bold font-mono">df.head(5) / df.describe()</code>
+                            <p class="text-slate-600 mt-1">Preview & summary stats / 預覽資料與統計摘要。</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-sky-700 font-bold font-mono">df.groupby('Person')['Cost'].sum()</code>
+                            <p class="text-slate-600 mt-1">Sum spending by person / 按人名統計總消費金額。</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-blue-700 font-bold font-mono">df[df['Status'] == 'Unpaid']</code>
+                            <p class="text-slate-600 mt-1">Filter unpaid expenses / 篩選未付款項目。</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-sky-700 font-bold font-mono">df['Msg'].str.contains('secret')</code>
+                            <p class="text-slate-600 mt-1">Search text keywords / 搜尋含特定關鍵字的文字。</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-blue-700 font-bold font-mono">df.sort_values(by='Bonus', ascending=False)</code>
+                            <p class="text-slate-600 mt-1">Rank bonus high to low / 將獎金依高至低排序。</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-sky-700 font-bold font-mono">df['Expense'].rolling(window=3).mean()</code>
+                            <p class="text-slate-600 mt-1">Rolling Forecast / 滾動預測 (計算移動平均值)。</p>
+                        </div>
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                            <code class="text-blue-700 font-bold font-mono">df.fillna(0) / df.dropna()</code>
+                            <p class="text-slate-600 mt-1">Handle missing values / 處理空白缺值。</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+    </div>
+
+    <!-- Data Inspector Modal -->
+    <div id="data-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                <h3 class="font-bold text-sky-700 flex items-center gap-2">
+                    <i data-lucide="table" class="w-5 h-5 text-sky-600"></i>
+                    <span id="modal-table-title">Excel Sheet Inspector</span>
+                </h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div id="modal-table-content" class="overflow-x-auto max-h-80">
+                <!-- Injected dynamically -->
+            </div>
+            <div class="flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs rounded-xl transition-colors shadow-sm">
+                    Close / 關閉
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Current Language State (en or zh) ---
+        let currentLang = 'en';
+
+        // --- Sound Effects using Tone.js ---
+        let soundEnabled = true;
+        
+        function playChime() {
+            if (!soundEnabled) return;
+            try {
+                const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                synth.volume.value = -12;
+                synth.triggerAttackRelease(["C5", "E5", "G5", "C6"], "16n");
+            } catch(e) {}
+        }
+
+        function playPopSound() {
+            if (!soundEnabled) return;
+            try {
+                const synth = new Tone.MembraneSynth().toDestination();
+                synth.volume.value = -16;
+                synth.triggerAttackRelease("C4", "32n");
+            } catch(e) {}
+        }
+
+        function playErrorSound() {
+            if (!soundEnabled) return;
+            try {
+                const synth = new Tone.Synth().toDestination();
+                synth.volume.value = -12;
+                synth.triggerAttackRelease("A2", "16n");
+            } catch(e) {}
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('sound-icon');
+            if (soundEnabled) {
+                icon.setAttribute('data-lucide', 'volume-2');
+            } else {
+                icon.setAttribute('data-lucide', 'volume-x');
+            }
+            lucide.createIcons();
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'zh' : 'en';
+            document.getElementById('lang-label').innerText = currentLang === 'en' ? 'EN / 中文' : '中文 / EN';
+            
+            // Re-render UI labels
+            document.getElementById('cheatsheet-btn-label').innerText = currentLang === 'en' ? 'Gossip Cheat Sheet' : '八卦速查表';
+            document.getElementById('level-label').innerText = currentLang === 'en' ? 'Level:' : '關卡:';
+            document.getElementById('subtitle-text').innerHTML = currentLang === 'en' 
+                ? 'Chatting with <strong class="text-sky-600">Lily 💋</strong> (Spilling Tea & Code)'
+                : '與 <strong class="text-sky-600">Lily 💋</strong> 聊天（聊八卦與學程式）';
+
+            // Refresh dynamic content
+            loadScenario(currentScenarioIndex, false);
+        }
+
+        // --- Sidebar & Modal Controls ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('vocab-sidebar');
+            sidebar.classList.toggle('translate-x-full');
+        }
+
+        function openModal(title, tableHtml) {
+            document.getElementById('modal-table-title').innerText = title;
+            document.getElementById('modal-table-content').innerHTML = tableHtml;
+            document.getElementById('data-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('data-modal').classList.add('hidden');
+        }
+
+        // --- Bilingual Game Scenarios ---
+        const scenarios = [
+            {
+                id: 1,
+                title: { en: "The Sunday Brunch Receipt Heist", zh: "週日早午餐帳單風波" },
+                messages: {
+                    en: [
+                        { sender: 'lily', text: "GIRL. You are NOT going to believe what happened at the team brunch yesterday!! 😱😱" },
+                        { sender: 'lily', text: "Someone ordered Caviar toast & Champagne, didn't pay their share, and ghosted us with a $200 deficit!!" },
+                        { sender: 'lily', text: "I saved the receipt log into Excel sheet `BrunchData` (Range A1:C7). Let's use Python to see who spent the most!" }
+                    ],
+                    zh: [
+                        { sender: 'lily', text: "親愛的！你絕對不敢相信昨天團隊早午餐發生了什麼事！！😱😱" },
+                        { sender: 'lily', text: "有人點了魚子醬吐司和香檳，沒付錢就溜了，害我們多負擔了 $200 帳單！！" },
+                        { sender: 'lily', text: "我把收據匯入了 Excel 表格 `BrunchData` (範圍 A1:C7)。我們用 Python 看看誰花最多錢！" }
+                    ]
+                },
+                dataTitle: "BrunchData.xlsx (A1:C7)",
+                data: [
+                    { Name: "Lily", Item: "Avocado Toast", Cost: 22 },
+                    { Name: "Chad", Item: "Truffle Fries & Mimosa", Cost: 48 },
+                    { Name: "Sophia", Item: "Caviar Toast & Champagne", Cost: 145 },
+                    { Name: "Chad", Item: "Cocktails", Cost: 35 },
+                    { Name: "Alex", Item: "Matcha Latte", Cost: 8 },
+                    { Name: "Sophia", Item: "Bottomless Brunch", Cost: 55 }
+                ],
+                challengeType: "code_fill",
+                questionText: {
+                    en: "Complete `=PY(...)` formula to aggregate total cost by 'Name':",
+                    zh: "補全 `=PY(...)` 程式碼，按『Name (姓名)』統計總金額："
+                },
+                template: `df = xl("A1:C7", headers=True)\nresult = df.groupby("___")["Cost"].sum()`,
+                correctAnswer: "Name",
+                hints: {
+                    en: "Group by the 'Name' column. Type `Name`.",
+                    zh: "請填入代表姓名的欄位名稱 `Name`。"
+                },
+                successStory: {
+                    en: "OMG! Sophia spent $200 in total ($145 + $55)!! She ghosted the bill! ☕☕ Exposed!",
+                    zh: "我的天！Sophia 一個人就花了 $200 美金！就是她吃霸王餐！抓包了！☕☕"
+                },
+                resultData: [
+                    { Name: "Alex", Total: "$8" },
+                    { Name: "Chad", Total: "$83" },
+                    { Name: "Lily", Total: "$22" },
+                    { Name: "Sophia", Total: "$200 🔥 (Culprit!)" }
+                ]
+            },
+            {
+                id: 2,
+                title: { en: "The Leaked Pitch Deck Logs", zh: "絕密簡報外洩事件" },
+                messages: {
+                    en: [
+                        { sender: 'lily', text: "ALERT! 🚨 Emergency staff meeting called! The pitch deck for our $2M luxury campaign was leaked!" },
+                        { sender: 'lily', text: "IT pulled the chat message log file into Excel sheet `ChatLogs` (A1:B6)." },
+                        { sender: 'lily', text: "We need to filter rows where the text message contains the secret phrase 'pitch deck'!" }
+                    ],
+                    zh: [
+                        { sender: 'lily', text: "緊急警告！🚨 公司的 200 萬美元提案簡報昨晚被外洩給對手公司了！" },
+                        { sender: 'lily', text: "資訊部導出了 Slack 聊天記錄到 Excel 試算表 `ChatLogs` (A1:B6)。" },
+                        { sender: 'lily', text: "我們需要用 Pandas 篩選出包含關鍵字 'pitch deck' 的對話記錄！" }
+                    ]
+                },
+                dataTitle: "ChatLogs.xlsx (A1:B6)",
+                data: [
+                    { Sender: "Alex", Message: "Hey everyone, lunch at 1pm?" },
+                    { Sender: "Chad", Message: "Sending secret pitch deck to rival!" },
+                    { Sender: "Sophia", Message: "Has anyone seen my lip gloss?" },
+                    { Sender: "Chad", Message: "VogueVibe is paying me big time" },
+                    { Sender: "Lily", Message: "Working on slides now." }
+                ],
+                challengeType: "multiple_choice",
+                questionText: {
+                    en: "Which Pandas string code filters rows containing 'pitch deck' in the 'Message' column?",
+                    zh: "哪一行 Pandas 程式碼可以搜尋 'Message' 欄位中包含 'pitch deck' 的內容？"
+                },
+                options: [
+                    "df[df['Message'].str.contains('pitch deck')]",
+                    "df.search('pitch deck')",
+                    "df.filter(Message == 'pitch deck')",
+                    "=SUMIF(Message, 'pitch deck')"
+                ],
+                correctAnswerIndex: 0,
+                successStory: {
+                    en: "CHAD!! It was CHAD in chat!! 'Sending secret pitch deck to rival!' Are you kidding me?! 🐍",
+                    zh: "竟然是 CHAD！！他在聊天記錄裡寫『把秘密簡報發給競爭對手』！太扯了吧？！🐍"
+                },
+                resultData: [
+                    { Sender: "Chad", Message: "Sending secret pitch deck to rival!", Suspicious: "TRUE 🚨" }
+                ]
+            },
+            {
+                id: 3,
+                title: { en: "Secret Executive Bonuses Uncovered", zh: "高層秘密獎金大揭密" },
+                messages: {
+                    en: [
+                        { sender: 'lily', text: "Wait, the gossip gets CRAZIER. Word on the street is Chad didn't get fired because his uncle is VP!" },
+                        { sender: 'lily', text: "HR created an Excel spreadsheet `Salaries` with Columns: `Name`, `Role`, `Base`, `Bonus`." },
+                        { sender: 'lily', text: "Let's use Python `=PY()` to calculate total compensation (`Base` + `Bonus`) and sort by highest!" }
+                    ],
+                    zh: [
+                        { sender: 'lily', text: "等等，八卦越來越離譜了。據說 Chad 沒被解雇是因為他叔叔是副總裁！" },
+                        { sender: 'lily', text: "人資部有一份薪資表 `Salaries` (包含: `Name`, `Role`, `Base`, `Bonus`)。" },
+                        { sender: 'lily', text: "我們用 `=PY()` 計算總薪資 (`Base` + `Bonus`) 並依金額由高至低排序！" }
+                    ]
+                },
+                dataTitle: "Salaries.xlsx (A1:D5)",
+                data: [
+                    { Name: "Lily", Role: "Designer", Base: 75000, Bonus: 3000 },
+                    { Name: "You", Role: "Analyst", Base: 82000, Bonus: 5000 },
+                    { Name: "Sophia", Role: "Strategist", Base: 90000, Bonus: 4000 },
+                    { Name: "Chad", Role: "Nepo Baby", Base: 120000, Bonus: 45000 }
+                ],
+                challengeType: "code_fill",
+                questionText: {
+                    en: "Sort DataFrame descending by 'Total' column by setting `ascending=___`:",
+                    zh: "補全程式碼，將 `ascending=___` 設定為由高至低（降序）排序："
+                },
+                template: `df["Total"] = df["Base"] + df["Bonus"]\nresult = df.sort_values(by="Total", ascending=___)`,
+                correctAnswer: "False",
+                hints: {
+                    en: "For descending order (highest first), set `ascending=False`.",
+                    zh: "若要由高至低排序，請填入 `False`（注意字首大寫）。"
+                },
+                successStory: {
+                    en: "45K BONUS FOR CHAD?! $165,000 TOTAL?! For leaking decks?! WE ARE RIOTING! 💥💥",
+                    zh: "Chad 居然拿了 4.5 萬獎金？！總共 16.5 萬美元？！洩密還能拿這麼多？！太過份了！💥💥"
+                },
+                resultData: [
+                    { Name: "Chad", Role: "Nepo Baby", TotalComp: "$165,000 👑" },
+                    { Name: "You", Role: "Analyst", TotalComp: "$87,000" },
+                    { Name: "Sophia", Role: "Strategist", TotalComp: "$94,000" },
+                    { Name: "Lily", Role: "Designer", TotalComp: "$78,000" }
+                ]
+            },
+            {
+                id: 4,
+                title: { en: "Exposing the Anonymous Gossip Blogger", zh: "揭穿匿名爆料部落客" },
+                messages: {
+                    en: [
+                        { sender: 'lily', text: "BABE. An anonymous Instagram page called @OfficeTea_NYC just posted our exact salaries!" },
+                        { sender: 'lily', text: "I managed to grab the server access logs table `AccessLogs` (Columns: `User`, `Timestamp`, `Action`)." },
+                        { sender: 'lily', text: "We need to count how many times each user accessed the confidential `/salary-db` endpoint!" }
+                    ],
+                    zh: [
+                        { sender: 'lily', text: "寶貝！一個名為 @OfficeTea_NYC 的匿名帳號剛才發布了我們公司的精確薪資！" },
+                        { sender: 'lily', text: "我拿到了伺服器存取記錄檔 `AccessLogs` (欄位: `User`, `Timestamp`, `Action`)。" },
+                        { sender: 'lily', text: "我們來計算每個人存取機密數據 `/salary-db` 的次數！" }
+                    ]
+                },
+                dataTitle: "AccessLogs.xlsx (A1:C8)",
+                data: [
+                    { User: "Alex", Timestamp: "22:14", Action: "/home" },
+                    { User: "Sophia", Timestamp: "22:18", Action: "/salary-db" },
+                    { User: "Sophia", Timestamp: "22:19", Action: "/salary-db" },
+                    { User: "Sophia", Timestamp: "22:20", Action: "/salary-db" },
+                    { User: "Lily", Timestamp: "22:25", Action: "/design-assets" },
+                    { User: "Chad", Timestamp: "22:30", Action: "/games" }
+                ],
+                challengeType: "multiple_choice",
+                questionText: {
+                    en: "How do you filter `Action == '/salary-db'` and count occurrences per User?",
+                    zh: "如何篩選 `Action == '/salary-db'` 並計算每位使用者的訪問次數？"
+                },
+                options: [
+                    "df[df['Action'] == '/salary-db']['User'].value_counts()",
+                    "df.count_if('/salary-db')",
+                    "df.groupby('User').find('/salary-db')",
+                    "=COUNTIF(C:C, '/salary-db')"
+                ],
+                correctAnswerIndex: 0,
+                successStory: {
+                    en: "SOPHIA WAS THE GOSSIP BLOGGER ALL ALONG!! 3 requests in 2 minutes to /salary-db!! 😱😱",
+                    zh: "Sophia 居然就是那個爆料部落客！！2 分鐘內連續存取薪資資料庫 3 次！！抓到大魔王了！😱😱"
+                },
+                resultData: [
+                    { Suspect: "Sophia", SecretAccesses: "3 Times (Busted!)" },
+                    { Suspect: "Alex", SecretAccesses: "0" },
+                    { Suspect: "Chad", SecretAccesses: "0" }
+                ]
+            },
+            {
+                id: 5,
+                title: { en: "The Ultimate Revenge =PY() Dashboard", zh: "終極反擊 =PY() 數據儀表板" },
+                messages: {
+                    en: [
+                        { sender: 'lily', text: "This is it!! The CEO wants a summary report right now before signing off on promotions." },
+                        { sender: 'lily', text: "Let's create the final Excel `=PY()` summary using Pandas `pivot_table`!" },
+                        { sender: 'lily', text: "Write code for a pivot table showing expenses grouped by `Department` and `Status`!" }
+                    ],
+                    zh: [
+                        { sender: 'lily', text: "關鍵時刻到了！！執行長要在審核晉升名單前看一份摘要報告。" },
+                        { sender: 'lily', text: "我們用 Pandas 的 `pivot_table` 在 Excel 中生成最終的 `=PY()` 數據儀表板！" },
+                        { sender: 'lily', text: "撰寫樞紐分析表程式碼，按 `Department` (部門) 與 `Status` (狀態) 統計金額！" }
+                    ]
+                },
+                dataTitle: "MasterExpenses.xlsx (A1:D7)",
+                data: [
+                    { Department: "Marketing", Status: "Approved", Amount: 1200 },
+                    { Department: "Marketing", Status: "Suspicious", Amount: 45000 },
+                    { Department: "Design", Status: "Approved", Amount: 800 },
+                    { Department: "Sales", Status: "Suspicious", Amount: 280 }
+                ],
+                challengeType: "code_fill",
+                questionText: {
+                    en: "Complete pivot table columns argument `columns='___'`: ",
+                    zh: "補全樞紐分析表欄位參數 `columns='___'`："
+                },
+                template: `result = df.pivot_table(index="Department", columns="___", values="Amount", aggfunc="sum")`,
+                correctAnswer: "Status",
+                hints: {
+                    en: "We want the pivot table columns to represent 'Status'.",
+                    zh: "請填入欄位名稱 `Status`。"
+                },
+                successStory: {
+                    en: "YOU SAVED THE FIRM!! 🎉 CEO saw the $45K suspicious expense and fired Chad!",
+                    zh: "你拯救了公司！🎉 執行長看到了 4.5 萬美元的異常支出並開除了 Chad！"
+                },
+                resultData: [
+                    { Department: "Marketing", Approved: "$1,200", Suspicious: "$45,000 (Reclaimed!)" },
+                    { Department: "Sales", Approved: "$0", Suspicious: "$280" },
+                    { Department: "Design", Approved: "$800", Suspicious: "$0" }
+                ]
+            },
+            {
+                id: 6,
+                title: { en: "Rolling Forecasting: Predict Next Month's Drama", zh: "滾動預測：預測下個月的劇痛費用" },
+                messages: {
+                    en: [
+                        { sender: 'lily', text: "Now that Chad is gone, CFO wants us to project next quarter's budget using Rolling Forecasting!" },
+                        { sender: 'lily', text: "Rolling forecasts smooth out spikes in expenses using a moving window (e.g. 3-month rolling average)." },
+                        { sender: 'lily', text: "Let's use Pandas `.rolling(window=3).mean()` on sheet `MonthlyExpenses` to forecast smooth costs!" }
+                    ],
+                    zh: [
+                        { sender: 'lily', text: "Chad 被開除後，財務長希望我們使用『滾動預測 (Rolling Forecasting)』來預測下季度的預算！" },
+                        { sender: 'lily', text: "滾動預測使用移動窗口（例如 3 個月滾動平均）來平滑異常的費用波動。" },
+                        { sender: 'lily', text: "我們在 `MonthlyExpenses` 表格中使用 Pandas 的 `.rolling(window=3).mean()` 來做預測！" }
+                    ]
+                },
+                dataTitle: "MonthlyExpenses.xlsx (A1:B6)",
+                data: [
+                    { Month: "Jan", Expense: 12000 },
+                    { Month: "Feb", Expense: 15000 },
+                    { Month: "Mar", Expense: 18000 },
+                    { Month: "Apr", Expense: 55000 },
+                    { Month: "May", Expense: 16000 }
+                ],
+                challengeType: "code_fill",
+                questionText: {
+                    en: "Complete `=PY(...)` formula to calculate a 3-month rolling mean forecast:",
+                    zh: "補全 `=PY(...)` 公式以計算 3 個月滾動平均預測值："
+                },
+                template: `df["Forecast"] = df["Expense"].rolling(window=___).mean()`,
+                correctAnswer: "3",
+                hints: {
+                    en: "Enter the number `3` for a 3-month rolling average window.",
+                    zh: "請填入數字 `3` 表示 3 個月的滾動窗口。"
+                },
+                successStory: {
+                    en: "PERFECT FORECAST! 📈 By using rolling average, you smoothed out Chad's April spike ($55K) into a realistic $29.6K baseline! You got promoted to Lead Python Analyst with a $20K raise! 💅👑",
+                    zh: "完美預測！📈 透過滾動平均值，你成功平滑了 Chad 在四月的爆表支出 ($5.5萬)，預測出合理的 $2.96萬 基準！你升職為高級 Python 分析師並加薪 2 萬美元！👑"
+                },
+                resultData: [
+                    { Month: "Mar", Expense: "$18,000", Rolling_Forecast: "$15,000" },
+                    { Month: "Apr", Expense: "$55,000 (Spike)", Rolling_Forecast: "$29,333" },
+                    { Month: "May", Expense: "$16,000", Rolling_Forecast: "$29,667 🎯" }
+                ]
+            }
+        ];
+
+        // --- Game State ---
+        let currentScenarioIndex = 0;
+
+        // --- Init Functions ---
+        function initApp() {
+            lucide.createIcons();
+            loadScenario(0, true);
+        }
+
+        function loadScenario(index, isNew = true) {
+            currentScenarioIndex = index;
+            updateProgress();
+            
+            const scenario = scenarios[index];
+            const messagesContainer = document.getElementById('chat-messages');
+
+            if (isNew) {
+                // Append scenario divider
+                const divider = document.createElement('div');
+                divider.className = "text-center my-6 animate-message";
+                divider.innerHTML = `
+                    <span class="bg-sky-100 text-sky-800 border border-sky-200 text-[11px] font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-sm">
+                        Chapter ${scenario.id}: ${scenario.title[currentLang]}
+                    </span>
+                `;
+                messagesContainer.appendChild(divider);
+
+                // Stream messages sequentially
+                streamMessages(scenario.messages[currentLang], 0, () => {
+                    showDataPreviewButton(scenario);
+                    showChallengeUI(scenario);
+                });
+            } else {
+                // If toggling language mid-game, refresh current challenge UI
+                showChallengeUI(scenario);
+            }
+        }
+
+        function streamMessages(messages, msgIndex, callback) {
+            if (msgIndex >= messages.length) {
+                if (callback) callback();
+                return;
+            }
+
+            const typingIndicator = document.getElementById('typing-indicator');
+            typingIndicator.classList.remove('hidden');
+            scrollToBottom();
+
+            setTimeout(() => {
+                typingIndicator.classList.add('hidden');
+                appendChatMessage(messages[msgIndex].sender, messages[msgIndex].text);
+                playPopSound();
+                scrollToBottom();
+
+                setTimeout(() => {
+                    streamMessages(messages, msgIndex + 1, callback);
+                }, 700);
+            }, 800);
+        }
+
+        function appendChatMessage(sender, text) {
+            const container = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} animate-message`;
+
+            if (sender === 'lily') {
+                msgDiv.innerHTML = `
+                    <div class="flex items-start space-x-2 max-w-[85%] sm:max-w-[75%]">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm">
+                            💋
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2 mb-1">
+                                <span class="text-xs font-bold text-sky-700">Lily</span>
+                                <span class="text-[10px] text-slate-400">Just now</span>
+                            </div>
+                            <div class="bg-white border border-slate-200 text-slate-700 text-xs sm:text-sm rounded-2xl rounded-tl-sm px-4 py-2.5 shadow-sm leading-relaxed">
+                                ${text}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                msgDiv.innerHTML = `
+                    <div class="flex items-end space-x-2 max-w-[85%] sm:max-w-[75%] justify-end">
+                        <div class="bg-gradient-to-r from-sky-600 to-blue-600 text-white text-xs sm:text-sm rounded-2xl rounded-tr-sm px-4 py-2.5 shadow-sm leading-relaxed">
+                            ${text}
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.appendChild(msgDiv);
+        }
+
+        function showDataPreviewButton(scenario) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = "flex justify-start animate-message my-2";
+            
+            // Build table HTML for modal
+            let tableHtml = `<table class="w-full text-left text-xs text-slate-700 border-collapse">
+                <thead><tr class="bg-slate-100 text-sky-800 border-b border-slate-200">`;
+            const keys = Object.keys(scenario.data[0]);
+            keys.forEach(k => tableHtml += `<th class="p-2 border-r border-slate-200 font-bold">${k}</th>`);
+            tableHtml += `</tr></thead><tbody>`;
+
+            scenario.data.forEach((row, idx) => {
+                tableHtml += `<tr class="${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} border-b border-slate-200">`;
+                keys.forEach(k => tableHtml += `<td class="p-2 border-r border-slate-200 font-mono">${row[k]}</td>`);
+                tableHtml += `</tr>`;
+            });
+            tableHtml += `</tbody></table>`;
+
+            div.innerHTML = `
+                <div class="ml-10 bg-white border border-sky-200 rounded-xl p-3 text-xs max-w-sm shadow-sm">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <span class="font-mono text-sky-800 font-bold flex items-center gap-1">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-sky-600"></i>
+                            ${scenario.dataTitle}
+                        </span>
+                        <span class="text-[10px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full font-semibold">Excel Range</span>
+                    </div>
+                    <button id="preview-sheet-btn-${scenario.id}" 
+                        class="w-full py-1.5 px-3 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-sky-200">
+                        <i data-lucide="eye" class="w-3.5 h-3.5 text-sky-600"></i> ${currentLang === 'en' ? 'Preview Data' : '檢視資料'} (${scenario.data.length} rows)
+                    </button>
+                </div>
+            `;
+            container.appendChild(div);
+
+            const btn = document.getElementById(`preview-sheet-btn-${scenario.id}`);
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    openModal(scenario.dataTitle, tableHtml);
+                });
+            }
+
+            lucide.createIcons();
+            scrollToBottom();
+        }
+
+        function showChallengeUI(scenario) {
+            const controls = document.getElementById('input-controls-container');
+
+            if (scenario.challengeType === 'code_fill') {
+                controls.innerHTML = `
+                    <div class="bg-white border border-sky-200 rounded-2xl p-4 shadow-md space-y-3 animate-message">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-sky-700 flex items-center gap-1.5">
+                                <i data-lucide="code" class="w-4 h-4 text-sky-600"></i> Python in Excel Challenge
+                            </span>
+                            <button onclick="showHint()" class="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-semibold">
+                                <i data-lucide="help-circle" class="w-3 h-3"></i> ${currentLang === 'en' ? 'Need Hint?' : '需要提示？'}
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-700 leading-normal">${scenario.questionText[currentLang]}</p>
+
+                        <div class="bg-slate-900 p-3 rounded-xl font-mono text-xs text-sky-300 whitespace-pre-wrap leading-relaxed shadow-inner">
+                            ${scenario.template.replace('___', '<input id="code-input" type="text" placeholder="fill code" class="bg-slate-800 border border-sky-400 text-sky-200 px-2 py-0.5 rounded text-xs font-bold outline-none focus:ring-1 focus:ring-sky-400 w-28 text-center inline-block">')}
+                        </div>
+
+                        <div id="hint-box" class="hidden text-[11px] text-sky-800 bg-sky-50 p-2.5 rounded-lg border border-sky-200"></div>
+
+                        <div class="flex justify-end">
+                            <button onclick="submitCodeFill()" class="w-full sm:w-auto px-5 py-2 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 transition-all">
+                                <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i> ${currentLang === 'en' ? 'Execute =PY() Formula' : '執行 =PY() 公式'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (scenario.challengeType === 'multiple_choice') {
+                let optionsHtml = '';
+                scenario.options.forEach((opt, idx) => {
+                    optionsHtml += `
+                        <button onclick="submitMultipleChoice(${idx})" class="w-full text-left p-2.5 rounded-xl bg-slate-50 hover:bg-sky-50 border border-slate-200 hover:border-sky-300 text-slate-700 font-mono text-xs transition-all flex items-center justify-between group">
+                            <span>${opt}</span>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:text-sky-600 transition-colors"></i>
+                        </button>
+                    `;
+                });
+
+                controls.innerHTML = `
+                    <div class="bg-white border border-sky-200 rounded-2xl p-4 shadow-md space-y-3 animate-message">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-sky-700 flex items-center gap-1.5">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-sky-600"></i> ${currentLang === 'en' ? 'Select Correct Pandas Code' : '選擇正確的 Pandas 程式碼'}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-700">${scenario.questionText[currentLang]}</p>
+                        <div class="space-y-2">
+                            ${optionsHtml}
+                        </div>
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+            scrollToBottom();
+        }
+
+        function showHint() {
+            const scenario = scenarios[currentScenarioIndex];
+            const hintBox = document.getElementById('hint-box');
+            if (hintBox && scenario.hints) {
+                hintBox.innerText = `💡 ${currentLang === 'en' ? 'Hint' : '提示'}: ${scenario.hints[currentLang]}`;
+                hintBox.classList.remove('hidden');
+            }
+        }
+
+        // --- Challenge Validation ---
+        function submitCodeFill() {
+            const input = document.getElementById('code-input');
+            if (!input) return;
+
+            const val = input.value.trim();
+            const scenario = scenarios[currentScenarioIndex];
+
+            if (val.toLowerCase() === scenario.correctAnswer.toLowerCase()) {
+                handleSuccess(val);
+            } else {
+                handleFailure(currentLang === 'en' ? "Incorrect code! Check casing or hint." : "程式碼錯誤！請檢查大小寫或檢視提示。");
+            }
+        }
+
+        function submitMultipleChoice(selectedIndex) {
+            const scenario = scenarios[currentScenarioIndex];
+            if (selectedIndex === scenario.correctAnswerIndex) {
+                handleSuccess(scenario.options[selectedIndex]);
+            } else {
+                handleFailure(currentLang === 'en' ? "Incorrect option! Try again." : "選項不正確，請再試一次！");
+            }
+        }
+
+        function handleSuccess(userAnswerText) {
+            playChime();
+            confetti({ particleCount: 70, spread: 60, origin: { y: 0.8 } });
+
+            const scenario = scenarios[currentScenarioIndex];
+
+            // Add user's response in chat
+            appendChatMessage('user', `Executed code: \`${userAnswerText}\``);
+
+            // Display simulated terminal output execution block
+            const messagesContainer = document.getElementById('chat-messages');
+            const terminalDiv = document.createElement('div');
+            terminalDiv.className = "flex justify-start animate-message my-3 ml-10";
+
+            let tableRowsHtml = '';
+            if (scenario.resultData) {
+                const keys = Object.keys(scenario.resultData[0]);
+                tableRowsHtml = `<table class="w-full text-left text-xs border-collapse font-mono">
+                    <thead><tr class="border-b border-slate-700 text-sky-400">`;
+                keys.forEach(k => tableRowsHtml += `<th class="p-1.5">${k}</th>`);
+                tableRowsHtml += `</tr></thead><tbody>`;
+
+                scenario.resultData.forEach(r => {
+                    tableRowsHtml += `<tr class="border-b border-slate-800 text-slate-200">`;
+                    keys.forEach(k => tableRowsHtml += `<td class="p-1.5">${r[k]}</td>`);
+                    tableRowsHtml += `</tr>`;
+                });
+                tableRowsHtml += `</tbody></table>`;
+            }
+
+            terminalDiv.innerHTML = `
+                <div class="bg-slate-900 border border-emerald-500/40 rounded-2xl p-3 text-xs w-full max-w-md shadow-xl space-y-2">
+                    <div class="flex items-center justify-between text-emerald-400 font-mono text-[11px] border-b border-slate-800 pb-1.5">
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                            Python =PY() Execution Successful
+                        </span>
+                        <span>200 OK</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        ${tableRowsHtml}
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(terminalDiv);
+            scrollToBottom();
+
+            // Clear controls
+            document.getElementById('input-controls-container').innerHTML = `
+                <div class="text-center py-2 text-xs text-emerald-600 font-bold flex items-center justify-center gap-1.5">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i> ${currentLang === 'en' ? 'Solved! Lily is responding...' : '解答成功！Lily 正在回覆...'}
+                </div>
+            `;
+            lucide.createIcons();
+
+            // Trigger Lily's reaction
+            setTimeout(() => {
+                appendChatMessage('lily', scenario.successStory[currentLang]);
+                playPopSound();
+                scrollToBottom();
+
+                // Next scenario or finish
+                setTimeout(() => {
+                    if (currentScenarioIndex < scenarios.length - 1) {
+                        showNextScenarioButton();
+                    } else {
+                        showGameCompletion();
+                    }
+                }, 1200);
+            }, 1000);
+        }
+
+        function handleFailure(msg) {
+            playErrorSound();
+            const container = document.getElementById('chat-messages');
+            const errDiv = document.createElement('div');
+            errDiv.className = "flex justify-center animate-message my-2";
+            errDiv.innerHTML = `
+                <div class="bg-rose-50 border border-rose-200 text-rose-700 text-xs px-3 py-2 rounded-xl flex items-center gap-2 max-w-md shadow-sm">
+                    <i data-lucide="alert-circle" class="w-4 h-4 text-rose-500 shrink-0"></i>
+                    <span>${msg}</span>
+                </div>
+            `;
+            container.appendChild(errDiv);
+            lucide.createIcons();
+            scrollToBottom();
+
+            setTimeout(() => {
+                errDiv.remove();
+            }, 3000);
+        }
+
+        function showNextScenarioButton() {
+            const controls = document.getElementById('input-controls-container');
+            controls.innerHTML = `
+                <button onclick="loadScenario(${currentScenarioIndex + 1}, true)" class="w-full py-3 bg-gradient-to-r from-sky-600 via-blue-600 to-sky-600 hover:opacity-95 text-white font-bold text-sm rounded-xl shadow-md flex items-center justify-center gap-2 transition-all">
+                    <span>${currentLang === 'en' ? `Continue to Chapter ${currentScenarioIndex + 2}` : `進入第 ${currentScenarioIndex + 2} 章`}</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            `;
+            lucide.createIcons();
+        }
+
+        function showGameCompletion() {
+            const controls = document.getElementById('input-controls-container');
+            controls.innerHTML = `
+                <div class="bg-white border border-sky-300 rounded-2xl p-4 text-center space-y-3 shadow-md">
+                    <h3 class="text-base font-black text-sky-700">
+                        🏆 ${currentLang === 'en' ? 'GOSSIP GIRL PYTHON MASTER UNLOCKED!' : '恭喜通關！獲得 PYTHON 數據大師頭銜！'}
+                    </h3>
+                    <p class="text-xs text-slate-600">
+                        ${currentLang === 'en' ? 'You solved all office mysteries, exposed the culprits, and mastered Pandas & =PY() in Excel!' : '你破解了所有辦公室八卦秘密，指認出主謀，並精通了 Excel 中的 Pandas 與 =PY()！'}
+                    </p>
+                    <button onclick="location.reload()" class="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl transition-colors shadow-sm">
+                        ${currentLang === 'en' ? 'Replay Campaign 🔄' : '重新體驗 🔄'}
+                    </button>
+                </div>
+            `;
+            
+            confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+        }
+
+        function updateProgress() {
+            const total = scenarios.length;
+            const current = currentScenarioIndex + 1;
+            const pct = Math.round((current / total) * 100);
+
+            document.getElementById('level-indicator').innerText = `${current} / ${total}`;
+            document.getElementById('progress-bar-fill').style.width = `${pct}%`;
+        }
+
+        function scrollToBottom() {
+            const chatContainer = document.getElementById('chat-container');
+            chatContainer.scrollTo({
+                top: chatContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        // Initialize on Window Load
+        window.onload = function() {
+            initApp();
+        };
+    </script>
+</body>
+</html>
